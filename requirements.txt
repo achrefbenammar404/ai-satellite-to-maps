@@ -1,0 +1,7 @@
+tensorflow==2.12.0
+tensorflow-metal
+keras==2.12.0
+matplotlib
+numpy
+Pillow
+requests
