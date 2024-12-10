@@ -1,4 +1,5 @@
 import tensorflow as tf
+import keras 
 from keras.models import Model
 from keras.layers import Input, Concatenate, Activation, LeakyReLU, Dropout
 from keras.layers import Conv2D, Conv2DTranspose, BatchNormalization
@@ -15,24 +16,39 @@ def define_discriminator(image_shape):
     merged = Concatenate()([in_src_image, in_target_image])
 
     d = Conv2D(64, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(merged)
-    d = LeakyReLU(alpha=0.2)(d)
+    d = LeakyReLU(negative_slope=0.2)(d)
     d = Conv2D(128, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(d)
     d = BatchNormalization()(d)
-    d = LeakyReLU(alpha=0.2)(d)
+    d = LeakyReLU(negative_slope=0.2)(d)
     d = Conv2D(256, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(d)
     d = BatchNormalization()(d)
-    d = LeakyReLU(alpha=0.2)(d)
+    d = LeakyReLU(negative_slope=0.2)(d)
     d = Conv2D(512, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(d)
     d = BatchNormalization()(d)
-    d = LeakyReLU(alpha=0.2)(d)
+    d = LeakyReLU(negative_slope=0.2)(d)
     d = Conv2D(512, (4,4), padding='same', kernel_initializer=init)(d)
     d = BatchNormalization()(d)
-    d = LeakyReLU(alpha=0.2)(d)
+    d = LeakyReLU(negative_slope=0.2)(d)
     d = Conv2D(1, (4,4), padding='same', kernel_initializer=init)(d)
     patch_out = Activation('sigmoid')(d)
     model = Model([in_src_image, in_target_image], patch_out)
-    opt = Adam(lr=0.0002, beta_1=0.5)
-    model.compile(loss='binary_crossentropy', optimizer=opt, loss_weights=[0.5])
+    opt = keras.optimizers.Adamax(
+        learning_rate=0.001,
+        beta_1=0.9,
+        beta_2=0.999,
+        epsilon=1e-07,
+        weight_decay=None,
+        clipnorm=None,
+        clipvalue=None,
+        global_clipnorm=None,
+        use_ema=False,
+        ema_momentum=0.99,
+        ema_overwrite_frequency=None,
+        loss_scale_factor=None,
+        gradient_accumulation_steps=None,
+        name="adamax",
+    )
+    model.compile(loss='binary_crossentropy', optimizer=opt, loss_weights=0.5)
     return model
 
 # ----------------------------------
@@ -43,7 +59,7 @@ def define_encoder_block(layer_in, n_filters, batchnorm=True):
     g = Conv2D(n_filters, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(layer_in)
     if batchnorm:
         g = BatchNormalization()(g, training=True)
-    g = LeakyReLU(alpha=0.2)(g)
+    g = LeakyReLU(negative_slope=0.2)(g)
     return g
 
 def decoder_block(layer_in, skip_in, n_filters, dropout=True):
@@ -94,6 +110,21 @@ def define_gan(g_model, d_model, image_shape):
     gen_out = g_model(in_src)
     dis_out = d_model([in_src, gen_out])
     model = Model(in_src, [dis_out, gen_out])
-    opt = Adam(lr=0.0002, beta_1=0.5)
+    opt = keras.optimizers.Adamax(
+        learning_rate=0.001,
+        beta_1=0.9,
+        beta_2=0.999,
+        epsilon=1e-07,
+        weight_decay=None,
+        clipnorm=None,
+        clipvalue=None,
+        global_clipnorm=None,
+        use_ema=False,
+        ema_momentum=0.99,
+        ema_overwrite_frequency=None,
+        loss_scale_factor=None,
+        gradient_accumulation_steps=None,
+        name="adamax",
+    )
     model.compile(loss=['binary_crossentropy', 'mae'], optimizer=opt, loss_weights=[1,100])
     return model
